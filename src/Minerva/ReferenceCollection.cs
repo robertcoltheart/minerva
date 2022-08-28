@@ -1,9 +1,12 @@
 ﻿using System.Collections;
+using System.Text;
 
 namespace Minerva;
 
 public class ReferenceCollection : IEnumerable<Reference>
 {
+    private static readonly byte[] RefPrefix = Encoding.UTF8.GetBytes("ref: ");
+
     private static readonly string[] Prefixes =
     {
         string.Empty,
@@ -42,6 +45,11 @@ public class ReferenceCollection : IEnumerable<Reference>
 
     private Reference? Resolve(string name)
     {
+        return ResolveLoose(name) ?? ResolvePacked(name);
+    }
+
+    private Reference? ResolveLoose(string name)
+    {
         foreach (var prefix in Prefixes)
         {
             var refName = $"{prefix}{name}";
@@ -49,17 +57,55 @@ public class ReferenceCollection : IEnumerable<Reference>
 
             if (File.Exists(path))
             {
-                var data = File.ReadAllText(path).TrimEnd('\n');
+                var data = File.ReadAllBytes(path).AsSpan();
 
-                if (data.StartsWith("ref: "))
+                if (data.StartsWith(RefPrefix))
                 {
-                    var targetName = data[5..];
+                    var targetName = Encoding.UTF8.GetString(data.Slice(RefPrefix.Length, data.Length - RefPrefix.Length - 1));
                     var target = Resolve(targetName);
 
-                    return new SymbolicReference(repository, refName, targetName, target);
+                    if (target == null)
+                    {
+                        return null;
+                    }
+
+                    return new SymbolicReference(target);
                 }
 
-                return new DirectReference(refName, repository, new ObjectId(data));
+                var id = new ObjectId(data[..20].ToArray());
+
+                return new DirectReference();
+            }
+        }
+
+        return null;
+    }
+
+    private Reference? ResolvePacked(string name)
+    {
+        var path = Path.Combine(repository.Info.Path, "packed-refs");
+
+        if (File.Exists(path))
+        {
+            var data = File.ReadAllBytes(path).AsSpan();
+
+            while (data.Length > 0)
+            {
+                var line = data.SliceLine();
+
+                if (!line.IsEmpty && line[0] != (byte) '#')
+                {
+                    var id = line[..40];
+                    var refName = line.Slice(id.Length + 1);
+                    var refNameValue = Encoding.UTF8.GetString(refName);
+
+                    if (refNameValue == name)
+                    {
+                        return new DirectReference();
+                    }
+                }
+
+                data = data.Slice(line.Length + 1);
             }
         }
 

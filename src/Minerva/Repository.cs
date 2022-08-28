@@ -4,9 +4,9 @@ public class Repository : IRepository
 {
     public Repository(string path)
     {
+        Info = new RepositoryInformation(path);
         Refs = new ReferenceCollection(this);
         Tags = new TagCollection();
-        Info = new RepositoryInformation(path);
     }
 
     public Branch Head

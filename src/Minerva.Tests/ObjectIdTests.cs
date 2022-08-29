@@ -9,66 +9,18 @@ public class ObjectIdTests
     [Fact]
     public void CanConvertToString()
     {
-        var id = new ObjectId(Convert.FromHexString(Sha));
+        var id = new ObjectId(Sha);
 
         Assert.Equal(Sha, id.ToString());
     }
 
     [Fact]
-    public void CanFormatToString()
+    public void CanFormatPath()
     {
-        var id = new ObjectId(Convert.FromHexString(Sha));
+        var id = new ObjectId(Sha);
 
-        var result = id.ToString();
+        var path = id.ToPath();
 
-        Assert.Equal(Sha, result);
-    }
-
-    [Fact]
-    public void CanFormatPrefix()
-    {
-        var id = new ObjectId(Convert.FromHexString(Sha));
-
-        var chars = new char[2];
-        var result = id.TryWritePrefix(chars, out var written);
-
-        Assert.True(result);
-        Assert.Equal(Sha[..2], new string(chars));
-        Assert.Equal(2, written);
-    }
-
-    [Fact]
-    public void CanFormatId()
-    {
-        var id = new ObjectId(Convert.FromHexString(Sha));
-
-        var chars = new char[38];
-        var result = id.TryWriteId(chars, out var written);
-
-        Assert.True(result);
-        Assert.Equal(Sha[2..], new string(chars));
-        Assert.Equal(38, written);
-    }
-
-    [Fact]
-    public void CannotGetIdWithNoCharacters()
-    {
-        var id = new ObjectId(Convert.FromHexString(Sha));
-
-        var result = id.TryWriteId(Array.Empty<char>(), out var written);
-
-        Assert.False(result);
-        Assert.Equal(0, written);
-    }
-
-    [Fact]
-    public void CannotGetIdWithLessCharacters()
-    {
-        var id = new ObjectId(Convert.FromHexString(Sha));
-
-        var result = id.TryWriteId(new char[10], out var written);
-
-        Assert.False(result);
-        Assert.Equal(0, written);
+        Assert.Equal($"{Sha[..2]}{Path.DirectorySeparatorChar}{Sha[2..]}", path);
     }
 }

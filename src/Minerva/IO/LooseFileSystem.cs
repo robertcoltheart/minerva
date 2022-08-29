@@ -12,23 +12,16 @@ public class LooseFileSystem : IFileSystem
 
     private readonly IRepository repository;
 
-    private readonly char[] objectPath;
-
     private readonly byte[] buffer = new byte[128];
 
     public LooseFileSystem(IRepository repository)
     {
         this.repository = repository;
-
-        objectPath = new char[40];
-        "objects".CopyTo(0, objectPath, 0, 7);
     }
 
     public RawObject? Read(ObjectId id)
     {
-        id.TryWritePrefix(objectPath.AsSpan(), out _);
-
-        var path = new string(objectPath);
+        var path = id.ToPath();
 
         if (!File.Exists(path))
         {
@@ -55,14 +48,6 @@ public class LooseFileSystem : IFileSystem
         }
 
         using var deflateStream = new DeflateStream(stream, CompressionMode.Decompress);
-
-        var type = deflateStream.ReadObjectType(id, buffer);
-        var length = deflateStream.ReadObjectLength(id, buffer);
-
-        if (type is ObjectType.Commit or ObjectType.Tag)
-        {
-
-        }
 
         return null;
     }

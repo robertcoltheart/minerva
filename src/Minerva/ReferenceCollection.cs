@@ -1,12 +1,9 @@
 ﻿using System.Collections;
-using System.Text;
 
 namespace Minerva;
 
 public class ReferenceCollection : IEnumerable<Reference>
 {
-    private static readonly byte[] RefPrefix = Encoding.UTF8.GetBytes("ref: ");
-
     private static readonly string[] Prefixes =
     {
         string.Empty,
@@ -57,11 +54,11 @@ public class ReferenceCollection : IEnumerable<Reference>
 
             if (File.Exists(path))
             {
-                var data = File.ReadAllBytes(path).AsSpan();
+                var data = File.ReadAllText(path);
 
-                if (data.StartsWith(RefPrefix))
+                if (data.StartsWith("ref: "))
                 {
-                    var targetName = Encoding.UTF8.GetString(data.Slice(RefPrefix.Length, data.Length - RefPrefix.Length - 1));
+                    var targetName = data[5..];
                     var target = Resolve(targetName);
 
                     if (target == null)
@@ -72,7 +69,7 @@ public class ReferenceCollection : IEnumerable<Reference>
                     return new SymbolicReference(target);
                 }
 
-                var id = new ObjectId(data[..20].ToArray());
+                var id = new ObjectId(data[..20]);
 
                 return new DirectReference();
             }
@@ -87,25 +84,24 @@ public class ReferenceCollection : IEnumerable<Reference>
 
         if (File.Exists(path))
         {
-            var data = File.ReadAllBytes(path).AsSpan();
+            using var reader = new StreamReader(File.OpenRead(path));
 
-            while (data.Length > 0)
+            var line = reader.ReadLine();
+
+            while (line != null)
             {
-                var line = data.SliceLine();
-
-                if (!line.IsEmpty && line[0] != (byte) '#')
+                if (!string.IsNullOrEmpty(line) && line[0] != (byte) '#')
                 {
                     var id = line[..40];
-                    var refName = line.Slice(id.Length + 1);
-                    var refNameValue = Encoding.UTF8.GetString(refName);
+                    var refName = line.Substring(id.Length + 1);
 
-                    if (refNameValue == name)
+                    if (refName == name)
                     {
                         return new DirectReference();
                     }
                 }
 
-                data = data.Slice(line.Length + 1);
+                line = reader.ReadLine();
             }
         }
 
